@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  STUDENT
+  EMPLOYEE
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+}
+
+enum PaymentType {
+  CARD
+  BANK
+  UPI
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum BookingStatus {
+  ACTIVE
+  RETURNED
+  OVERDUE
+  LOST
+}
+
+model Account {
+  id                 String             @id @default(uuid())
+  role               Role
+  name               String
+  email              String             @unique
+  dob                DateTime
+  password_hash      String
+  verificationStatus VerificationStatus @default(PENDING)
+  created_at         DateTime           @default(now())
+
+  student      Student?
+  employee     Employee?
+  profile      Profile?
+  wallet       Wallet?
+  bookings     Booking[]
+  kycDocuments KycDocument[]
+}
+
+model Student {
+  account_id      String @id
+  register_number String @unique
+
+  account Account @relation(fields: [account_id], references: [id], onDelete: Cascade)
+}
+
+model Employee {
+  account_id    String @id
+  employee_code String @unique
+
+  account Account @relation(fields: [account_id], references: [id], onDelete: Cascade)
+}
+
+model Profile {
+  account_id  String  @id
+  address     String?
+  preferences String?
+
+  account Account @relation(fields: [account_id], references: [id], onDelete: Cascade)
+}
+
+model Wallet {
+  id         String @id @default(uuid())
+  account_id String @unique
+
+  account      Account             @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  sources      PaymentSource[]
+  transactions WalletTransaction[]
+}
+
+model PaymentSource {
+  id         String      @id @default(uuid())
+  wallet_id  String
+  type       PaymentType
+  provider   String
+  identifier String
+  created_at DateTime    @default(now())
+
+  wallet Wallet @relation(fields: [wallet_id], references: [id], onDelete: Cascade)
+}
+
+model WalletTransaction {
+  id               String          @id @default(uuid())
+  wallet_id        String
+  amount           Float
+  transaction_type TransactionType
+  description      String
+  created_at       DateTime        @default(now())
+
+  wallet Wallet @relation(fields: [wallet_id], references: [id], onDelete: Cascade)
+}
+
+model Book {
+  id               String @id @default(uuid())
+  title            String
+  author           String
+  genre            String
+  description      String
+  total_copies     Int
+  available_copies Int
+
+  bookings Booking[]
+}
+
+model Booking {
+  id          String        @id @default(uuid())
+  account_id  String
+  book_id     String
+  borrow_date DateTime
+  due_date    DateTime
+  status      BookingStatus
+
+  account Account @relation(fields: [account_id], references: [id], onDelete: Cascade)
+  book    Book    @relation(fields: [book_id], references: [id], onDelete: Cascade)
+}
+
+model KycDocument {
+  id          String   @id @default(uuid())
+  account_id  String
+  file_path   String
+  doc_type    String
+  uploaded_at DateTime @default(now())
+
+  account Account @relation(fields: [account_id], references: [id], onDelete: Cascade)
+}
