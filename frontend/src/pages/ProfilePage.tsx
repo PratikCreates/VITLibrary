@@ -43,7 +43,7 @@ export default function ProfilePage() {
     if (isLoading) return <div className="text-center p-8 text-muted-foreground animate-pulse">Loading profile...</div>;
 
     // Use fetched profile or fallback to auth user data partially
-    const initialData = profile || { name: user?.name, email: 'loading...', dob: '', address: '' };
+    const initialData = profile || { name: user?.name, email: 'loading...', dob: '', address: '', mobile: '', alternateEmail: '', avatarUrl: '' };
 
     const handleKyc = () => {
         navigate('/kyc');
@@ -88,8 +88,14 @@ export default function ProfilePage() {
                 {/* Sidebar Card */}
                 <div className="lg:col-span-1 glass-card p-6 rounded-2xl h-fit text-center space-y-6">
                     <div className="relative group w-24 h-24 mx-auto cursor-pointer" onClick={() => document.getElementById('photo-upload')?.click()}>
-                        <div className="w-24 h-24 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-white text-4xl font-bold overflow-hidden">
-                            {user?.name?.charAt(0) || 'U'}
+                        <div className="w-24 h-24 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-white text-4xl font-bold overflow-hidden border-4 border-primary/20">
+                            {file ? (
+                                <img src={URL.createObjectURL(file)} alt="Profile" className="w-full h-full object-cover" />
+                            ) : initialData.avatarUrl ? (
+                                <img src={initialData.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                                user?.name?.charAt(0) || 'U'
+                            )}
                         </div>
                         <div className="absolute inset-0 bg-black/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <Camera size={24} className="text-white" />
@@ -102,7 +108,7 @@ export default function ProfilePage() {
                             onChange={(e) => {
                                 if (e.target.files?.[0]) {
                                     setFile(e.target.files[0]);
-                                    toast('Photo selected (upload mock)', 'success');
+                                    toast('Photo preview updated!', 'success');
                                 }
                             }}
                         />
@@ -116,6 +122,12 @@ export default function ProfilePage() {
                             <Mail size={16} className="text-primary" />
                             <span className="truncate">{initialData.email}</span>
                         </div>
+                        {initialData.mobile && (
+                            <div className="flex items-center space-x-3 text-sm text-muted-foreground font-mono">
+                                <span className="text-primary font-bold">#</span>
+                                <span className="truncate">{initialData.mobile}</span>
+                            </div>
+                        )}
                         <div className="flex items-center space-x-3 text-sm text-muted-foreground">
                             <MapPin size={16} className="text-primary" />
                             <span className="truncate">{initialData.address || "No address set"}</span>
@@ -141,19 +153,19 @@ export default function ProfilePage() {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Date of Birth</label>
                                 <div className="flex gap-2">
-                                    <select aria-label="Day" defaultValue={initialData.dob?.split('T')[0]?.split('-')[2]} {...register("dob_day")} className="input-field w-1/4 p-2 rounded-md bg-background border border-border text-sm">
+                                    <select aria-label="Day" defaultValue={initialData.dob?.split('T')[0]?.split('-')[2]} {...register("dob_day")} className="input-field w-1/4 p-2 rounded-md bg-slate-900 border border-border text-sm text-white">
                                         <option value="">Day</option>
                                         {[...Array(31)].map((_, i) => (
                                             <option key={i + 1} value={(i + 1).toString().padStart(2, '0')}>{i + 1}</option>
                                         ))}
                                     </select>
-                                    <select aria-label="Month" defaultValue={initialData.dob?.split('T')[0]?.split('-')[1]} {...register("dob_month")} className="input-field w-1/3 p-2 rounded-md bg-background border border-border text-sm">
+                                    <select aria-label="Month" defaultValue={initialData.dob?.split('T')[0]?.split('-')[1]} {...register("dob_month")} className="input-field w-1/3 p-2 rounded-md bg-slate-900 border border-border text-sm text-white">
                                         <option value="">Month</option>
                                         {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((m, i) => (
                                             <option key={m} value={(i + 1).toString().padStart(2, '0')}>{m}</option>
                                         ))}
                                     </select>
-                                    <select aria-label="Year" defaultValue={initialData.dob?.split('T')[0]?.split('-')[0]} {...register("dob_year")} className="input-field flex-1 p-2 rounded-md bg-background border border-border text-sm">
+                                    <select aria-label="Year" defaultValue={initialData.dob?.split('T')[0]?.split('-')[0]} {...register("dob_year")} className="input-field flex-1 p-2 rounded-md bg-slate-900 border border-border text-sm text-white">
                                         <option value="">Year</option>
                                         {[...Array(100)].map((_, i) => {
                                             const year = new Date().getFullYear() - i;
@@ -161,6 +173,24 @@ export default function ProfilePage() {
                                         })}
                                     </select>
                                 </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Mobile Number</label>
+                                <input
+                                    defaultValue={initialData.mobile}
+                                    {...register("mobile")}
+                                    className="input-field w-full p-2.5 rounded-md bg-background border border-border text-foreground font-mono"
+                                    placeholder="+91 XXXXX XXXXX"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Alternate Email</label>
+                                <input
+                                    defaultValue={initialData.alternateEmail}
+                                    {...register("alternateEmail")}
+                                    className="input-field w-full p-2.5 rounded-md bg-background border border-border text-foreground"
+                                    placeholder="alternate@email.com"
+                                />
                             </div>
                             <div className="space-y-2 md:col-span-2">
                                 <label className="text-sm font-medium">Address</label>

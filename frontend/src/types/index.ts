@@ -34,7 +34,11 @@ export interface Profile {
     name: string;
     email: string;
     dob: string;
-    // Others as needed
+    address?: string;
+    mobile?: string;
+    avatarUrl?: string;
+    alternateEmail?: string;
+    preferences?: string[];
 }
 
 export interface Booking {

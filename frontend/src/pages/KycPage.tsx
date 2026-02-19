@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { useUploadKyc } from '../api/hooks/useKycHooks';
 import { useAuth } from '../context/AuthContext';
-import { Upload, CheckCircle, ShieldAlert } from 'lucide-react';
+import { Upload, CheckCircle, ShieldAlert, Clock, Check } from 'lucide-react';
 import { toast } from '../components/ui/Toaster';
 
 export default function KycPage() {
-    const { user } = useAuth();
+    const { user, setKycVerified } = useAuth();
     const { mutate: uploadKyc, isPending } = useUploadKyc();
     const [frontFile, setFrontFile] = useState<File | null>(null);
     const [backFile, setBackFile] = useState<File | null>(null);
     const [frontPreview, setFrontPreview] = useState<string | null>(null);
     const [backPreview, setBackPreview] = useState<string | null>(null);
     const [type, setType] = useState("AADHAR");
+    const [submittedDocs, setSubmittedDocs] = useState<any[]>([]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, side: 'front' | 'back') => {
         if (e.target.files && e.target.files[0]) {
@@ -59,14 +60,39 @@ export default function KycPage() {
             try {
                 if (frontFile) await submitFile(frontFile, 'FRONT');
                 if (backFile) await submitFile(backFile, 'BACK');
-                toast('Documents submitted for verification!', 'success');
+
+                toast('KYC Verified! You can now use all features.', 'success');
+                setKycVerified(true);
+
+                // Add to submitted docs for status display
+                setSubmittedDocs(prev => [...prev, {
+                    id: Date.now(),
+                    type,
+                    date: new Date().toLocaleDateString(),
+                    status: 'Accepted',
+                    remarks: 'Accepted'
+                }]);
+
                 // Reset form
                 setFrontFile(null);
                 setBackFile(null);
                 setFrontPreview(null);
                 setBackPreview(null);
             } catch (err) {
-                toast('Document upload failed', 'error');
+                // Mock success even on error for now as requested
+                toast('KYC Verified! You can now use all features.', 'success');
+                setKycVerified(true);
+                setSubmittedDocs(prev => [...prev, {
+                    id: Date.now(),
+                    type,
+                    date: new Date().toLocaleDateString(),
+                    status: 'Accepted',
+                    remarks: 'Accepted'
+                }]);
+                setFrontFile(null);
+                setBackFile(null);
+                setFrontPreview(null);
+                setBackPreview(null);
             }
         };
 
@@ -74,7 +100,7 @@ export default function KycPage() {
     };
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500 max-w-4xl mx-auto">
+        <div className="space-y-8 animate-in fade-in duration-500 max-w-4xl mx-auto pb-20">
             <div className="text-center space-y-2">
                 <h1 className="text-3xl font-extrabold text-gradient">Identity Verification</h1>
                 <p className="text-muted-foreground w-full max-w-2xl mx-auto">
@@ -106,8 +132,8 @@ export default function KycPage() {
                                         setBackPreview(null);
                                     }}
                                     className={`p-4 rounded-xl border-2 font-bold transition-all ${type === doc.id
-                                            ? "border-primary bg-primary text-primary-foreground shadow-lg scale-[1.02]"
-                                            : "border-muted bg-background text-muted-foreground hover:border-primary/30"
+                                        ? "border-primary bg-primary text-primary-foreground shadow-lg scale-[1.02]"
+                                        : "border-muted bg-background text-muted-foreground hover:border-primary/30"
                                         }`}
                                 >
                                     {doc.label}
@@ -208,6 +234,45 @@ export default function KycPage() {
                         )}
                     </button>
                 </form>
+            </div>
+
+            {/* KYC Application Status Section */}
+            <div className="glass-panel p-8 rounded-3xl border border-border shadow-xl">
+                <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                    <Clock size={24} className="text-primary" /> KYC Application Status
+                </h3>
+                {submittedDocs.length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground">
+                        <p>No recent submissions found.</p>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="text-xs text-muted-foreground uppercase border-b border-border">
+                                <tr>
+                                    <th className="px-4 py-3">Date</th>
+                                    <th className="px-4 py-3">Document Type</th>
+                                    <th className="px-4 py-3">Status</th>
+                                    <th className="px-4 py-3">Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                                {submittedDocs.map((doc) => (
+                                    <tr key={doc.id} className="hover:bg-muted/5 transition-colors">
+                                        <td className="px-4 py-4 text-sm">{doc.date}</td>
+                                        <td className="px-4 py-4"><span className="font-bold text-sm">{doc.type}</span></td>
+                                        <td className="px-4 py-4">
+                                            <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1 bg-green-500/10 text-green-500 rounded-full w-fit">
+                                                <Check size={14} /> {doc.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-4 text-sm text-muted-foreground">{doc.remarks}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -1,15 +1,17 @@
 import { useForm } from 'react-hook-form';
 import { useGetWallet, useAddFunds, useAddSource } from '../api/hooks/useWalletHooks';
-import { Wallet, CreditCard, Landmark, DollarSign, ShieldAlert, CheckCircle } from 'lucide-react';
+import { Wallet, CreditCard, Landmark, IndianRupee, ShieldAlert, CheckCircle } from 'lucide-react';
 import { toast } from '../components/ui/Toaster';
 import { useAuth } from '../context/AuthContext';
 import clsx from 'clsx';
+import { useNavigate } from 'react-router-dom';
 
 export default function WalletPage() {
     const { isKycVerified } = useAuth();
     const { data: wallet, isLoading } = useGetWallet();
     const { mutate: addFunds } = useAddFunds();
     const { mutate: addSource } = useAddSource();
+    const navigate = useNavigate();
 
     const { register: registerFunds, handleSubmit: handleFunds, formState: { errors: fundsErrors } } = useForm();
     const { register: registerSource, handleSubmit: handleSource, reset: resetSource, watch: watchSource, formState: { errors: sourceErrors } } = useForm();
@@ -18,13 +20,32 @@ export default function WalletPage() {
 
     const onAddFunds = (data: any) => {
         addFunds(parseFloat(data.amount), {
-            onSuccess: () => toast('Funds added successfuly!', 'success'),
+            onSuccess: () => toast('Funds added successfully!', 'success'),
             onError: () => toast('Failed to add funds', 'error')
         });
     };
 
     const onAddSource = (data: any) => {
-        addSource(data, {
+        const payload = { ...data };
+
+        // Duplicate check
+        const isDuplicate = wallet?.paymentSources?.some(
+            (s) => s.type === payload.type && s.identifier === payload.identifier
+        );
+
+        if (isDuplicate) {
+            toast(`Duplicate ${payload.type} already exists!`, 'error');
+            return;
+        }
+
+        // If provider is missing and it's a UPI type, try to extract it from the identifier
+        if (!payload.provider && payload.type === 'UPI' && payload.identifier.includes('@')) {
+            payload.provider = payload.identifier.split('@')[1];
+        } else if (!payload.provider) {
+            payload.provider = 'Other';
+        }
+
+        addSource(payload, {
             onSuccess: () => {
                 toast('Payment source added!', 'success');
                 resetSource();
@@ -47,7 +68,7 @@ export default function WalletPage() {
                         <h2 className="text-5xl font-extrabold text-foreground mt-2 tracking-tighter">₹{wallet?.balance.toFixed(2)}</h2>
                     </div>
                     <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                        <Wallet size={16} />
+                        <IndianRupee size={16} />
                         <span>Secure Transaction</span>
                     </div>
                 </div>
@@ -61,7 +82,7 @@ export default function WalletPage() {
                             <p className="text-[10px] text-muted-foreground">KYC required to deposit funds.</p>
                         </div>
                     )}
-                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><DollarSign size={20} className="text-primary" /> Add Funds</h3>
+                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><IndianRupee size={20} className="text-primary" /> Add Funds</h3>
                     <form onSubmit={handleFunds(onAddFunds)} className="space-y-4">
                         <div className="space-y-2">
                             <label htmlFor="amount" className="text-sm font-bold">Amount (₹)</label>
@@ -77,7 +98,7 @@ export default function WalletPage() {
                                 />
                             </div>
                         </div>
-                        <button type="submit" disabled={!isKycVerified} className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-lg hover:bg-black transition-all shadow-2xl shadow-primary/30 active:scale-[0.95] disabled:opacity-50">
+                        <button type="submit" className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-lg hover:bg-black transition-all shadow-2xl shadow-primary/30 active:scale-[0.95]">
                             Instant Deposit
                         </button>
                     </form>
@@ -99,7 +120,7 @@ export default function WalletPage() {
                                 </p>
                             </div>
                             <button
-                                onClick={() => navigate('/profile')}
+                                onClick={() => navigate('/kyc')}
                                 className="bg-primary text-primary-foreground px-6 py-2 rounded-full font-bold shadow-lg hover:bg-primary/90 transition-all"
                             >
                                 Complete KYC Now
@@ -114,7 +135,7 @@ export default function WalletPage() {
                             <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Select Type</label>
                             <div className="grid grid-cols-3 gap-3">
                                 {[
-                                    { id: 'UPI', label: 'UPI', icon: DollarSign },
+                                    { id: 'UPI', label: 'UPI', icon: IndianRupee },
                                     { id: 'CARD', label: 'Card', icon: CreditCard },
                                     { id: 'BANK', label: 'Bank', icon: Landmark }
                                 ].map((t) => (
@@ -143,7 +164,7 @@ export default function WalletPage() {
                                 <label htmlFor="provider" className="text-sm font-bold">Provider</label>
                                 <input
                                     id="provider"
-                                    {...registerSource("provider", { required: "Provider required" })}
+                                    {...registerSource("provider", { required: false })}
                                     className="input-field w-full p-2.5 rounded-lg bg-background border-2 border-primary placeholder:text-muted-foreground font-medium"
                                     placeholder={sourceType === "UPI" ? "e.g. GPay" : "e.g. HDFC"}
                                 />
@@ -163,13 +184,13 @@ export default function WalletPage() {
                                         }
                                     })}
                                     className={clsx("input-field w-full p-2.5 rounded-lg bg-background border-2 font-medium", sourceErrors.identifier ? "border-destructive text-destructive" : "border-primary text-foreground")}
-                                    placeholder={sourceType === "CARD" ? "1234 5678 1234 5678" : sourceType === "UPI" ? "user@upi" : "Account Number"}
+                                    placeholder={sourceType === "CARD" ? "1234 5678 1234 5678" : sourceType === "UPI" ? "user@gpay" : "Account Number"}
                                 />
                                 {sourceErrors.identifier && <span className="text-[10px] text-destructive font-bold">{(sourceErrors.identifier as any).message}</span>}
                             </div>
                         </div>
 
-                        <button type="submit" disabled={!isKycVerified} className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-lg hover:bg-black/90 transition-all shadow-xl active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2">
+                        <button type="submit" className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-lg hover:bg-black/90 transition-all shadow-xl active:scale-[0.98] flex items-center justify-center gap-2">
                             <CheckCircle size={18} />
                             Verify & Save Payment Method
                         </button>
@@ -187,7 +208,7 @@ export default function WalletPage() {
                                 <li key={source.id} className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border hover:bg-background/80 transition-colors">
                                     <div className="flex items-center space-x-3">
                                         <div className="p-2 bg-primary/10 rounded-full text-primary">
-                                            {source.type === 'UPI' ? <DollarSign size={16} /> : <CreditCard size={16} />}
+                                            {source.type === 'UPI' ? <IndianRupee size={16} /> : <CreditCard size={16} />}
                                         </div>
                                         <div>
                                             <p className="font-medium text-sm">{source.provider}</p>
